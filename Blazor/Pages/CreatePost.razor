@@ -1,0 +1,103 @@
+@page "/CreatePost"
+@attribute [Authorize]
+@using Domain.Models
+@using Domain.DTOs
+@using HttpClients.ClientInterfaces
+@inject IUserService UserService
+@inject IPostService PostService
+@inject NavigationManager NavMgr
+
+<div class="card">
+    @if (_users == null)
+    {
+        <label>Loading users...</label>
+    }
+    else if (!_users.Any())
+    {
+        <label>No users, you cannot create a post without assignee.</label>
+    }
+    else
+    {
+        <h3>CreatePost</h3>
+        <div class="form-group field">
+            <label>Title:</label>
+            <input type="text" @bind="_postTitle"/>
+        </div>
+        <div class="form-group-field">
+            <label>Body:</label>
+            <input type="text" @bind="_postBody"/>
+        </div>
+        <div class="form-group field">
+            <label>Assignee:</label>
+            <select @bind="_selectedUserId">
+                <option>Choose</option>
+                @foreach (User user in _users)
+                {
+                    <option value="@user.Id">@user.Username</option>
+                }
+            </select>
+        </div>
+        <div class="button-row">
+            @if (!string.IsNullOrEmpty(_msg))
+            {
+                <label style="color: red">@_msg</label>
+            }
+            <button @onclick="Create" class="acceptbtn">Create</button>
+        </div>
+    }
+</div>
+
+@code {
+    private IEnumerable<User>? _users;
+    private int? _selectedUserId;
+    private string _postTitle = "";
+    private string _postBody = "";
+    private string _msg = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _msg = "";
+        try
+        {
+            _users = await UserService.GetUsersAsync();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            _msg = e.Message;
+        }
+    }
+
+    private async Task Create()
+    {
+        _msg = "";
+        if (_selectedUserId == null)
+        {
+            _msg = "You must select an assignee!";
+            return;
+        }
+        if (string.IsNullOrEmpty(_postTitle))
+        {
+            _msg = "Title cannot be empty!";
+            return;
+        }
+
+        if (string.IsNullOrEmpty(_postBody))
+        {
+            _msg = "Body cannot be empty!";
+            return;
+        }
+
+        try
+        {
+            PostCreationDto dto = new((int)_selectedUserId ,_postTitle, _postBody);
+            await PostService.CreateAsync(dto);
+            NavMgr.NavigateTo("/");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            _msg = e.Message;
+        }
+    }
+}
